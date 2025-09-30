@@ -97,7 +97,11 @@
             <artifactId>jakarta.ws.rs-api</artifactId>
             <version>3.1.0</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.glassfish.jersey.core</groupId>
+            <artifactId>jersey-common</artifactId>
+            <version>3.1.5</version>
+        </dependency>
         <!-- Lombok (для скорочення коду) -->
         <dependency>
             <groupId>org.projectlombok</groupId>

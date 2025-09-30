@@ -47,10 +47,12 @@ public class MathSchoolBot extends TelegramWebhookBot {
     private final GroupRepository groupRepository;
     private final RegistrationRequestService registrationRequestService;
     private final GoogleSheetsService sheetsService;
+
     @Override
     public String getBotPath() {
         return webhookPath; // напр. "/webhook"
     }
+
     @Value("${telegram.bot.username}")
     private String botUsername;
 
@@ -86,11 +88,13 @@ public class MathSchoolBot extends TelegramWebhookBot {
     public String getBotUsername() {
         return botUsername;
     }
+
     @Override
     public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
         onUpdateReceived(update); // можна переиспользувати твій код
         return null; // бо ти вже відповідаєш окремими SendMessage
     }
+
     @Override
     public String getBotToken() {
         return botToken;
@@ -124,6 +128,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             e.printStackTrace();
         }
     }
+
     // ================= MAIN MENU =================
     private void sendMessage(Long chatId, String text) {
         SendMessage message = new SendMessage();
@@ -136,6 +141,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
 
         executeMessage(message);
     }
+
     private ReplyKeyboardMarkup buildMainMenu(User user) {
         ReplyKeyboardMarkup keyboard = new ReplyKeyboardMarkup();
         keyboard.setResizeKeyboard(true);
@@ -325,8 +331,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
                     editMessage(chatId, messageId, "❌ У вас немає прав на цю дію.", null);
                 }
                 return;
-            }
-            else  {
+            } else {
                 // ---- Якщо нічого не підійшло ----
                 editMessage(chatId, messageId, "❌ Невідома команда: " + data, null);
             }
@@ -406,6 +411,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             executeSafely(edit);
         }
     }
+
     // ------------------- CALLBACK -------------------
     private <T extends Serializable, M extends BotApiMethod<T>> void executeSafely(M method) {
         try {
@@ -414,6 +420,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             e.printStackTrace();
         }
     }
+
     private void sendChildSelectionForParent(Long chatId, Integer messageId, Group group, Long parentTelegramId) {
         List<User> students = userRepository.findByGroupAndRole(group, Role.STUDENT);
         if (students.isEmpty()) {
@@ -455,6 +462,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
         message.setReplyMarkup(markup);
         executeMessage(message);
     }
+
     // ------------------- TEACHER -------------------
     private void sendTeacherGroups(Long chatId, Integer messageId) {
         DayOfWeek today = LocalDate.now().getDayOfWeek();
@@ -501,6 +509,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
         msg.setReplyMarkup(markup);
         executeMessage(msg);
     }
+
     private void sendStudentSelection(Long chatId, Integer messageId, Group group) {
         try {
             List<String> students = sheetsService.getStudents(group.getName());
@@ -535,6 +544,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             sendMessage(chatId, "❌ Не вдалося завантажити учнів: " + e.getMessage());
         }
     }
+
     private void sendGradeSelection(Long chatId, Integer messageId, Long groupId, String groupName, String student) {
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rows = new ArrayList<>();
@@ -561,6 +571,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
 
         System.out.println("Sent grade selection for student: " + student + " in group: " + groupName);
     }
+
     // ------------------- FACULTY BATTLE -------------------
     private void handleFacultyBattle(Long chatId, User user, Integer messageId) {
         if (user == null) {
@@ -627,6 +638,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             sendMessage(chatId, sb.toString());
         }
     }
+
     private void handleFacultySorting(Long chatId, User user, Integer messageId) {
         if (user == null) {
             sendMessage(chatId, "❗ Ви ще не зареєстровані.");
@@ -694,6 +706,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             e.printStackTrace();
         }
     }
+
     private void handleFacultyReset(Long chatId, Integer messageId) {
         // Reset all users' faculty link and personal points, and faculty points
         List<User> allUsers = userRepository.findAll();
@@ -712,6 +725,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
         sendMessage(chatId, "♻️ Усі факультети та особисті бали скинуті. Починаємо новий сезон!");
         System.out.println("Faculties and user faculty-points reset by teacher (chatId=" + chatId + ")");
     }
+
     // helper to add points both to user and to faculty total
     private void addPointsForUser(User u, int points, String reason) {
         if (u == null) return;
@@ -731,6 +745,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             System.out.println("User " + u.getName() + " has no faculty — points added to user only (reason: " + reason + ")");
         }
     }
+
     // ------------------- MAIN MENU -------------------
     private void sendMainMenu(Long chatId) {
         User user = userService.findByTelegramId(chatId);
@@ -785,6 +800,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             }
         }
     }
+
     private void handlePhoto(Message message, User user) {
         String pendingDate = userService.getPendingHomeworkDate(user.getTelegramId());
         if (pendingDate == null) {
@@ -835,6 +851,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             sendMessage(message.getChatId(), "Помилка при завантаженні фото на Google Drive.");
         }
     }
+
     private void handleDocument(Message message, User user) {
         String pendingDate = userService.getPendingHomeworkDate(user.getTelegramId());
         if (pendingDate == null) {
@@ -876,6 +893,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             sendMessage(message.getChatId(), "Помилка при завантаженні файлу на Google Drive.");
         }
     }
+
     private void sendRoleSelection(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId.toString());
@@ -890,6 +908,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
         message.setReplyMarkup(markup);
         executeMessage(message);
     }
+
     private void sendGroupSelection(Long chatId, Integer messageId) {
         List<Group> groups = groupRepository.findAll();
         SendMessage message = new SendMessage();
@@ -906,6 +925,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
         message.setReplyMarkup(markup);
         executeMessage(message);
     }
+
     private void notifyAdminAboutNewChild(RegistrationRequest req) {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(adminChatId));
@@ -922,6 +942,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
         message.setReplyMarkup(markup);
         executeMessage(message);
     }
+
     private void sendHomeworkMenu(Long chatId, Integer messageId, User user) {
         try {
             List<String> lastLessons = driveService.getLastFiveLessonDates(
@@ -952,6 +973,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             sendMessage(chatId, "Помилка при отриманні дат уроків.");
         }
     }
+
     private void executeMessage(SendMessage message) {
         try {
             execute(message);
