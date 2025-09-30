@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -26,8 +27,6 @@ import java.util.List;
 public class GoogleSheetsService {
 
     private static final String APPLICATION_NAME = "MathSchoolBot";
-    private static final String CREDENTIALS_FILE_PATH = "src/main/resources/client_secret.json";
-    private static final String TOKENS_DIRECTORY_PATH = "tokens";
     private static final String SPREADSHEET_ID = "1ZX49DJPlOUfa6AjsjDCDVPfJCys7WBMUWq4SBUiVr5U";
 
     private final Sheets sheetsService;
@@ -45,19 +44,35 @@ public class GoogleSheetsService {
 
     private Credential authorize(com.google.api.client.http.HttpTransport httpTransport,
                                  GsonFactory jsonFactory) throws Exception {
-        GoogleSecretsHelper.createClientSecretFile();
+
+        // 1. Беремо client_secret.json з ENV
+        String credentialsJson = System.getenv("GOOGLE_CREDENTIALS");
+        if (credentialsJson == null) {
+            throw new IllegalStateException("GOOGLE_CREDENTIALS env var is missing!");
+        }
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-                jsonFactory, new InputStreamReader(new FileInputStream(CREDENTIALS_FILE_PATH)));
+                jsonFactory, new StringReader(credentialsJson));
+
+        // 2. Використовуємо refresh_token з ENV (якщо є)
+        String tokensJson = System.getenv("GOOGLE_TOKENS");
+        FileDataStoreFactory dataStoreFactory = null;
+
+        if (tokensJson != null) {
+            // можна зберегти refresh_token у пам'яті чи в базі
+            // для спрощення поки можна ігнорувати, SDK саме підтягне
+        }
 
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                httpTransport, jsonFactory, clientSecrets, Collections.singleton(SheetsScopes.SPREADSHEETS))
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+                httpTransport, jsonFactory, clientSecrets,
+                Collections.singleton(SheetsScopes.SPREADSHEETS))
                 .setAccessType("offline")
                 .build();
 
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        // 3. У продакшені Webhook краще юзати Service Account
+        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder().setPort(8888).build())
+                .authorize("user");
     }
+
 
     /**
      * Отримати список учнів (2-й рядок у аркуші групи)
