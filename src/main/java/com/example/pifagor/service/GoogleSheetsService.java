@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -27,8 +28,6 @@ import java.util.List;
 public class GoogleSheetsService {
 
     private static final String APPLICATION_NAME = "MathSchoolBot";
-    private static final String CREDENTIALS_FILE_PATH = "src/main/resources/client_secret.json";
-
     private static final String SPREADSHEET_ID = "1ZX49DJPlOUfa6AjsjDCDVPfJCys7WBMUWq4SBUiVr5U";
 
     private final Sheets sheetsService;
@@ -46,9 +45,13 @@ public class GoogleSheetsService {
 
     private GoogleCredential authorize(com.google.api.client.http.HttpTransport httpTransport,
                                        GsonFactory jsonFactory) throws Exception {
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-                jsonFactory, new InputStreamReader(new FileInputStream(CREDENTIALS_FILE_PATH))
-        );
+
+        String clientJson = System.getenv("GOOGLE_CREDENTIALS");
+        if (clientJson == null) {
+            throw new IllegalStateException("GOOGLE_CREDENTIALS не задано у змінних середовища");
+        }
+
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, new StringReader(clientJson));
 
         String refreshToken = System.getenv("GOOGLE_REFRESH_TOKEN");
         if (refreshToken == null) {
@@ -62,6 +65,7 @@ public class GoogleSheetsService {
                 .build()
                 .setRefreshToken(refreshToken);
     }
+
 
     /**
      * Отримати список учнів (2-й рядок у аркуші групи)

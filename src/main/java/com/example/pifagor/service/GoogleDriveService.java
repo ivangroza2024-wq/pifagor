@@ -32,7 +32,6 @@ public class GoogleDriveService {
 
     private static final String DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
     private static final String DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
-    private static final String TOKENS_DIRECTORY_PATH = "tokens";
 
     private final HttpRequestFactory requestFactory;
     private final JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
@@ -40,8 +39,12 @@ public class GoogleDriveService {
 
     public GoogleDriveService() {
         try {
-            InputStream in = Files.newInputStream(Paths.get("src/main/resources/client_secret.json"));
-            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, new InputStreamReader(in));
+            String clientJson = System.getenv("GOOGLE_CREDENTIALS");
+            if (clientJson == null) {
+                throw new IllegalStateException("GOOGLE_CREDENTIALS не задано у змінних середовища");
+            }
+
+            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, new StringReader(clientJson));
 
             String refreshToken = System.getenv("GOOGLE_REFRESH_TOKEN");
             if (refreshToken == null) {
@@ -64,6 +67,11 @@ public class GoogleDriveService {
             throw new RuntimeException("Не вдалося ініціалізувати GoogleDriveService", e);
         }
     }
+
+    public String getRootFolderId() {
+        return rootFolderId;
+    }
+
 
     /** Створює папку або повертає існуючу */
     public String getOrCreateFolder(String parentId, String folderName) throws Exception {
@@ -169,9 +177,7 @@ public class GoogleDriveService {
         return dates;
     }
 
-    public String getRootFolderId() {
-        return rootFolderId;
-    }
+
 }
 
 
