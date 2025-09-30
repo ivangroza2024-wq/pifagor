@@ -102,6 +102,14 @@
             <artifactId>jersey-common</artifactId>
             <version>3.1.5</version>
         </dependency>
+
+
+        <!-- Потрібно ще для запуску HTTP сервера -->
+        <dependency>
+            <groupId>org.glassfish.jersey.containers</groupId>
+            <artifactId>jersey-container-grizzly2-http</artifactId>
+            <version>3.1.5</version>
+        </dependency>
         <!-- Lombok (для скорочення коду) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
