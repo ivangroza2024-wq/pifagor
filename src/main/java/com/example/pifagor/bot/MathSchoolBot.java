@@ -17,6 +17,7 @@ import com.example.pifagor.util.DateUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
@@ -36,7 +37,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Component
-public class MathSchoolBot extends TelegramLongPollingBot {
+public class MathSchoolBot extends TelegramWebhookBot {
 
     private final UserService userService;
     private final UserRepository userRepository;
@@ -46,7 +47,10 @@ public class MathSchoolBot extends TelegramLongPollingBot {
     private final GroupRepository groupRepository;
     private final RegistrationRequestService registrationRequestService;
     private final GoogleSheetsService sheetsService;
-
+    @Override
+    public String getBotPath() {
+        return webhookPath; // напр. "/webhook"
+    }
     @Value("${telegram.bot.username}")
     private String botUsername;
 
@@ -56,6 +60,8 @@ public class MathSchoolBot extends TelegramLongPollingBot {
     @Value("${telegram.admin.chatId}")
     private Long adminChatId;
 
+    @Value("${telegram.bot.webhookPath}")
+    private String webhookPath; // додамо цей параметр у application.properties
     private final String rootFolderId = "16mUO4OUdMjsjjbziYZTqwSWOvKo2qZOM";
 
     public MathSchoolBot(UserService userService,
@@ -80,12 +86,16 @@ public class MathSchoolBot extends TelegramLongPollingBot {
     public String getBotUsername() {
         return botUsername;
     }
-
+    @Override
+    public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
+        onUpdateReceived(update); // можна переиспользувати твій код
+        return null; // бо ти вже відповідаєш окремими SendMessage
+    }
     @Override
     public String getBotToken() {
         return botToken;
     }
-    @Override
+
     public void onUpdateReceived(Update update) {
         try {
             if (update.hasMessage()) {
