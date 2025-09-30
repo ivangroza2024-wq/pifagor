@@ -6,6 +6,7 @@ import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInsta
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.io.StringReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -27,6 +27,8 @@ import java.util.List;
 public class GoogleSheetsService {
 
     private static final String APPLICATION_NAME = "MathSchoolBot";
+    private static final String CREDENTIALS_FILE_PATH = "src/main/resources/client_secret.json";
+
     private static final String SPREADSHEET_ID = "1ZX49DJPlOUfa6AjsjDCDVPfJCys7WBMUWq4SBUiVr5U";
 
     private final Sheets sheetsService;
@@ -42,37 +44,24 @@ public class GoogleSheetsService {
                 .build();
     }
 
-    private Credential authorize(com.google.api.client.http.HttpTransport httpTransport,
-                                 GsonFactory jsonFactory) throws Exception {
-
-        // 1. Беремо client_secret.json з ENV
-        String credentialsJson = System.getenv("GOOGLE_CREDENTIALS");
-        if (credentialsJson == null) {
-            throw new IllegalStateException("GOOGLE_CREDENTIALS env var is missing!");
-        }
+    private GoogleCredential authorize(com.google.api.client.http.HttpTransport httpTransport,
+                                       GsonFactory jsonFactory) throws Exception {
         GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(
-                jsonFactory, new StringReader(credentialsJson));
+                jsonFactory, new InputStreamReader(new FileInputStream(CREDENTIALS_FILE_PATH))
+        );
 
-        // 2. Використовуємо refresh_token з ENV (якщо є)
-        String tokensJson = System.getenv("GOOGLE_TOKENS");
-        FileDataStoreFactory dataStoreFactory = null;
-
-        if (tokensJson != null) {
-            // можна зберегти refresh_token у пам'яті чи в базі
-            // для спрощення поки можна ігнорувати, SDK саме підтягне
+        String refreshToken = System.getenv("GOOGLE_REFRESH_TOKEN");
+        if (refreshToken == null) {
+            throw new IllegalStateException("GOOGLE_REFRESH_TOKEN не задано у змінних середовища");
         }
 
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                httpTransport, jsonFactory, clientSecrets,
-                Collections.singleton(SheetsScopes.SPREADSHEETS))
-                .setAccessType("offline")
-                .build();
-
-        // 3. У продакшені Webhook краще юзати Service Account
-        return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder().setPort(8888).build())
-                .authorize("user");
+        return new GoogleCredential.Builder()
+                .setTransport(httpTransport)
+                .setJsonFactory(jsonFactory)
+                .setClientSecrets(clientSecrets)
+                .build()
+                .setRefreshToken(refreshToken);
     }
-
 
     /**
      * Отримати список учнів (2-й рядок у аркуші групи)

@@ -8,6 +8,7 @@ import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInsta
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.http.*;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.http.json.JsonHttpContent;
@@ -39,23 +40,22 @@ public class GoogleDriveService {
 
     public GoogleDriveService() {
         try {
-            GoogleSecretsHelper.createClientSecretFile();
-            // Завантаження client_secret.json
             InputStream in = Files.newInputStream(Paths.get("src/main/resources/client_secret.json"));
             GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, new InputStreamReader(in));
 
-            // OAuth flow
-            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                    new NetHttpTransport(), jsonFactory, clientSecrets,
-                    Collections.singletonList("https://www.googleapis.com/auth/drive"))
-                    .setDataStoreFactory(new com.google.api.client.util.store.FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
-                    .setAccessType("offline")
-                    .build();
+            String refreshToken = System.getenv("GOOGLE_REFRESH_TOKEN");
+            if (refreshToken == null) {
+                throw new IllegalStateException("GOOGLE_REFRESH_TOKEN не задано у змінних середовища");
+            }
 
-            LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-            Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+            GoogleCredential credential = new GoogleCredential.Builder()
+                    .setTransport(new NetHttpTransport())
+                    .setJsonFactory(jsonFactory)
+                    .setClientSecrets(clientSecrets)
+                    .build()
+                    .setRefreshToken(refreshToken);
 
-            requestFactory = new NetHttpTransport().createRequestFactory((HttpRequest request) -> {
+            requestFactory = new NetHttpTransport().createRequestFactory(request -> {
                 credential.initialize(request);
                 request.setParser(new JsonObjectParser(jsonFactory));
             });
