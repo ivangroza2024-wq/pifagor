@@ -12,19 +12,19 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 
 
-    @Configuration
-    public class BotConfig {
+@Configuration
+public class BotConfig {
 
-        private final MathSchoolBot bot;
+    private final MathSchoolBot bot;
 
-        public BotConfig(MathSchoolBot bot) {
-            this.bot = bot;
-        }
-
-        @Bean
-        public void registerBot() throws Exception {
-            TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
-            botsApi.registerBot(bot);
-        }
+    public BotConfig(MathSchoolBot bot) {
+        this.bot = bot;
     }
 
+    @Bean
+    public MathSchoolBot registerBot() throws Exception {
+        TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
+        botsApi.registerBot(bot);
+        return bot; // Повертаємо бот як bean
+    }
+}
