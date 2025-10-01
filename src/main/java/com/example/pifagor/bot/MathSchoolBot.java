@@ -88,8 +88,11 @@ public class MathSchoolBot extends TelegramLongPollingBot {
     }
 
     public void onUpdateReceived(Update update) {
+        System.out.println("=== NEW UPDATE RECEIVED ===");
+        System.out.println(update.toString());
         try {
             if (update.hasMessage()) {
+
                 Message message = update.getMessage();
                 Long userId = message.getFrom().getId();
                 User user = userService.findByTelegramId(userId);
