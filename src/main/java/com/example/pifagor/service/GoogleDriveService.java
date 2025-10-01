@@ -32,29 +32,26 @@ public class GoogleDriveService {
 
     private static final String DRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
     private static final String DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
+    private static final String ROOT_FOLDER_ID = "16mUO4OUdMjsjjbziYZTqwSWOvKo2qZOM";
 
     private final HttpRequestFactory requestFactory;
     private final JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
-    private final String rootFolderId = "16mUO4OUdMjsjjbziYZTqwSWOvKo2qZOM";
+
 
     public GoogleDriveService() {
         try {
-            String clientJson = System.getenv("GOOGLE_CREDENTIALS");
-            if (clientJson == null) {
-                throw new IllegalStateException("GOOGLE_CREDENTIALS не задано у змінних середовища");
-            }
-
-            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, new StringReader(clientJson));
-
+            String clientId = System.getenv("GOOGLE_CLIENT_ID");
+            String clientSecret = System.getenv("GOOGLE_CLIENT_SECRET");
             String refreshToken = System.getenv("GOOGLE_REFRESH_TOKEN");
-            if (refreshToken == null) {
-                throw new IllegalStateException("GOOGLE_REFRESH_TOKEN не задано у змінних середовища");
+
+            if (clientId == null || clientSecret == null || refreshToken == null) {
+                throw new IllegalStateException("Не вистачає змінних середовища для Google OAuth");
             }
 
             GoogleCredential credential = new GoogleCredential.Builder()
                     .setTransport(new NetHttpTransport())
                     .setJsonFactory(jsonFactory)
-                    .setClientSecrets(clientSecrets)
+                    .setClientSecrets(clientId, clientSecret)
                     .build()
                     .setRefreshToken(refreshToken);
 
@@ -68,10 +65,13 @@ public class GoogleDriveService {
         }
     }
 
-    public String getRootFolderId() {
-        return rootFolderId;
+    public HttpRequestFactory getRequestFactory() {
+        return requestFactory;
     }
 
+    public String getRootFolderId() {
+        return ROOT_FOLDER_ID;
+    }
 
     /** Створює папку або повертає існуючу */
     public String getOrCreateFolder(String parentId, String folderName) throws Exception {

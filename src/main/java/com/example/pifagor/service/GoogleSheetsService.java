@@ -32,39 +32,44 @@ public class GoogleSheetsService {
 
     private final Sheets sheetsService;
 
-    public GoogleSheetsService() throws Exception {
-        var httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-        var jsonFactory = GsonFactory.getDefaultInstance();
+    public GoogleSheetsService() {
+        try {
+            var httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+            var jsonFactory = GsonFactory.getDefaultInstance();
 
-        Credential credential = authorize(httpTransport, jsonFactory);
+            String clientId = System.getenv("GOOGLE_CLIENT_ID");
+            String clientSecret = System.getenv("GOOGLE_CLIENT_SECRET");
+            String refreshToken = System.getenv("GOOGLE_REFRESH_TOKEN");
 
-        this.sheetsService = new Sheets.Builder(httpTransport, jsonFactory, credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+            if (clientId == null || clientSecret == null || refreshToken == null) {
+                throw new IllegalStateException("Не вистачає змінних середовища для Google OAuth");
+            }
+
+            GoogleCredential credential = new GoogleCredential.Builder()
+                    .setTransport(httpTransport)
+                    .setJsonFactory(jsonFactory)
+                    .setClientSecrets(clientId, clientSecret)
+                    .build()
+                    .setRefreshToken(refreshToken);
+
+            this.sheetsService = new Sheets.Builder(httpTransport, jsonFactory, credential)
+                    .setApplicationName(APPLICATION_NAME)
+                    .build();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Не вдалося ініціалізувати GoogleSheetsService", e);
+        }
     }
 
-    private GoogleCredential authorize(com.google.api.client.http.HttpTransport httpTransport,
-                                       GsonFactory jsonFactory) throws Exception {
-
-        String clientJson = System.getenv("GOOGLE_CREDENTIALS");
-        if (clientJson == null) {
-            throw new IllegalStateException("GOOGLE_CREDENTIALS не задано у змінних середовища");
-        }
-
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(jsonFactory, new StringReader(clientJson));
-
-        String refreshToken = System.getenv("GOOGLE_REFRESH_TOKEN");
-        if (refreshToken == null) {
-            throw new IllegalStateException("GOOGLE_REFRESH_TOKEN не задано у змінних середовища");
-        }
-
-        return new GoogleCredential.Builder()
-                .setTransport(httpTransport)
-                .setJsonFactory(jsonFactory)
-                .setClientSecrets(clientSecrets)
-                .build()
-                .setRefreshToken(refreshToken);
+    public Sheets getSheetsService() {
+        return sheetsService;
     }
+
+    public String getSpreadsheetId() {
+        return SPREADSHEET_ID;
+    }
+
+
 
 
     /**
