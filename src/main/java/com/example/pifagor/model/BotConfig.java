@@ -15,16 +15,10 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 @Configuration
 public class BotConfig {
 
-    private final MathSchoolBot bot;
-
-    public BotConfig(MathSchoolBot bot) {
-        this.bot = bot;
-    }
-
     @Bean
-    public MathSchoolBot registerBot() throws Exception {
+    public TelegramBotsApi telegramBotsApi(MathSchoolBot bot) throws Exception {
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
         botsApi.registerBot(bot);
-        return bot; // Повертаємо бот як bean
+        return botsApi;
     }
 }
