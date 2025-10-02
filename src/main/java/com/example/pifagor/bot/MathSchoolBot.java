@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 
+import org.telegram.telegrambots.bots.TelegramWebhookBot;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
@@ -36,8 +37,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+
 @Component
-public class MathSchoolBot extends TelegramLongPollingBot {
+public class MathSchoolBot extends TelegramWebhookBot {
 
     private final UserService userService;
     private final UserRepository userRepository;
@@ -56,6 +58,9 @@ public class MathSchoolBot extends TelegramLongPollingBot {
 
     @Value("${telegram.admin.chatId}")
     private Long adminChatId;
+
+    @Value("${telegram.webhook.path}")
+    private String webhookPath;
 
     private final String rootFolderId = "16mUO4OUdMjsjjbziYZTqwSWOvKo2qZOM";
 
@@ -86,10 +91,15 @@ public class MathSchoolBot extends TelegramLongPollingBot {
     public String getBotToken() {
         return botToken;
     }
-
-    public void onUpdateReceived(Update update) {
-        System.out.println("=== NEW UPDATE RECEIVED ===");
+    @Override
+    public String getBotPath() {
+        return webhookPath; // наприклад "/webhook"
+    }
+    @Override
+    public BotApiMethod<?> onWebhookUpdateReceived(Update update) {
+        System.out.println("=== NEW UPDATE (WEBHOOK) ===");
         System.out.println(update.toString());
+
         try {
             if (update.hasMessage()) {
 
@@ -100,24 +110,45 @@ public class MathSchoolBot extends TelegramLongPollingBot {
                 if (message.hasText()) {
                     String text = message.getText();
                     switch (text) {
-                        case "📚 Домашнє завдання" -> sendHomeworkMenu(message.getChatId(), null, user);
-                        case "⚔️ Битва факультетів" -> handleFacultyBattle(message.getChatId(), user, null);
-                        case "✏️ Поставити оцінку" -> sendTeacherGroups(message.getChatId(), null);
-                        case "📝 Реєстрація" -> sendGroupSelection(message.getChatId(), null);
-                        default -> handleMessage(message); // якщо це не команда меню → звичайна обробка
+                        case "📚 Домашнє завдання" -> {
+                            sendHomeworkMenu(message.getChatId(), null, user);
+                            return null;
+                        }
+                        case "⚔️ Битва факультетів" -> {
+                            handleFacultyBattle(message.getChatId(), user, null);
+                            return null;
+                        }
+                        case "✏️ Поставити оцінку" -> {
+                            sendTeacherGroups(message.getChatId(), null);
+                            return null;
+                        }
+                        case "📝 Реєстрація" -> {
+                            sendGroupSelection(message.getChatId(), null);
+                            return null;
+                        }
+                        default -> {
+                            handleMessage(message);
+                            return null;
+                        }
                     }
                 } else if (message.hasDocument() && user != null) {
                     handleDocument(message, user);
+                    return null;
                 } else if (message.hasPhoto() && user != null) {
                     handlePhoto(message, user);
+                    return null;
                 }
             } else if (update.hasCallbackQuery()) {
                 handleCallback(update.getCallbackQuery());
+                return null;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        return null; // якщо нема що відправляти у відповідь відразу
     }
+
 
     // ================= MAIN MENU =================
     private void sendMessage(Long chatId, String text) {
