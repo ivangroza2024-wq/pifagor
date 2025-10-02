@@ -5,6 +5,7 @@ import com.example.pifagor.model.Group;
 import com.example.pifagor.model.Role;
 import com.example.pifagor.model.User;
 import jakarta.persistence.QueryHint;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.stereotype.Repository;
@@ -14,7 +15,7 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-
+    @Transactional
     @QueryHints(@QueryHint(name = "org.hibernate.cacheable", value = "false"))
     User findByTelegramId(Long telegramId);
 
