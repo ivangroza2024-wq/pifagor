@@ -15,7 +15,7 @@ import org.telegram.telegrambots.updatesreceivers.DefaultWebhook;
 
 @Configuration
 public class BotConfig {
-    @Value("${telegram.bot.webhookPath}")
+    @Value("${telegram.bot.webhook.path}")
     private String webhookPath;
 
     @Value("${WEBHOOK_URL}")  // <-- беремо з Environment Render-а
