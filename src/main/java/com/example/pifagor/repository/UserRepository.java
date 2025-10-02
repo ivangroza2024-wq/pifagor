@@ -4,7 +4,9 @@ import com.example.pifagor.model.Faculty;
 import com.example.pifagor.model.Group;
 import com.example.pifagor.model.Role;
 import com.example.pifagor.model.User;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,6 +14,8 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
+
+    @QueryHints(@QueryHint(name = "org.hibernate.cacheable", value = "false"))
     User findByTelegramId(Long telegramId);
 
     // Знайти всіх користувачів певного факультету
