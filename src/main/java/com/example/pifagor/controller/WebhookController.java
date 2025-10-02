@@ -14,8 +14,9 @@ public class WebhookController {
         this.bot = bot;
     }
 
-    @PostMapping("${telegram.webhook.path}")
+    @PostMapping("${telegram.bot.webhook.path}")  // <== переконайся, що змінна існує у Render
     public BotApiMethod<?> onUpdate(@RequestBody Update update) {
+        System.out.println("Отримано оновлення: " + update);  // Лог для дебагу
         return bot.onWebhookUpdateReceived(update);
     }
 }
