@@ -59,8 +59,9 @@ public class MathSchoolBot extends TelegramWebhookBot {
     @Value("${telegram.admin.chatId}")
     private Long adminChatId;
 
-    @Value("${telegram.webhook.path}")
+    @Value("${telegram.bot.webhookPath}")
     private String webhookPath;
+
 
     private final String rootFolderId = "16mUO4OUdMjsjjbziYZTqwSWOvKo2qZOM";
 

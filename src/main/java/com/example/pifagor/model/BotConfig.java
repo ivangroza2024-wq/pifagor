@@ -13,31 +13,29 @@ import org.telegram.telegrambots.meta.api.methods.updates.SetWebhook;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 import org.telegram.telegrambots.updatesreceivers.DefaultWebhook;
 
-
 @Configuration
 public class BotConfig {
+    @Value("${telegram.bot.webhookPath}")
+    private String webhookPath;
 
-    @Value("${telegram.webhook.url}")
-    private String webhookUrl;
+    @Value("${WEBHOOK_URL}")  // <-- беремо з Environment Render-а
+    private String externalUrl;
 
     @Bean
     public TelegramBotsApi telegramBotsApi(MathSchoolBot bot) throws Exception {
-        // Внутрішній URL (тобто твій локальний сервер)
-        String internalUrl = "http://0.0.0.0:8080";
-
-        // Зовнішній URL (той, що видає Render або твій домен)
-        String externalUrl = System.getenv("WEBHOOK_URL");
-
-        // Створюємо webhook
         DefaultWebhook defaultWebhook = new DefaultWebhook();
-        defaultWebhook.setInternalUrl(internalUrl);
+        defaultWebhook.setInternalUrl("http://0.0.0.0:8080");
 
-        // TelegramBotsApi з webhook
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class, defaultWebhook);
 
-        // Реєструємо бота з webhook
-        botsApi.registerBot(bot, new SetWebhook(externalUrl + "/webhook"));
+        // Склеюємо WEBHOOK_URL + webhookPath
+        SetWebhook setWebhook = SetWebhook.builder()
+                .url(externalUrl + webhookPath)
+                .build();
+
+        botsApi.registerBot(bot, setWebhook);
 
         return botsApi;
     }
+
 }
