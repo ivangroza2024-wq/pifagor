@@ -125,10 +125,10 @@ public class GoogleSheetsService {
 
     /** Пошук комірки учня+дата */
     private String findCell(String groupName, String studentName, String date, boolean isHomework) throws Exception {
-        // Обгортаємо назву аркуша в одинарні лапки
-        String safeSheetName = "'" + groupName + "'";
+        // 1. Безпечна назва аркуша (апострофи + пробіли)
+        String safeSheetName = "'" + groupName.replace("'", "") + "'";
 
-        // знайти рядок з датою
+        // 2. Отримуємо всі дати (стовпець А)
         String range = safeSheetName + "!A:A";
         ValueRange response = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, range)
@@ -137,32 +137,39 @@ public class GoogleSheetsService {
         List<List<Object>> rows = response.getValues();
         if (rows == null) throw new Exception("Не знайдено жодної дати у групі " + groupName);
 
+        // 3. Шукаємо потрібну дату (ігноруємо формат пробілів)
         int rowIndex = -1;
         for (int i = 0; i < rows.size(); i++) {
-            if (!rows.get(i).isEmpty() && date.equals(rows.get(i).get(0).toString())) {
-                rowIndex = i + 1; // Google Sheets індексація з 1
-                break;
+            if (!rows.get(i).isEmpty()) {
+                String sheetDate = rows.get(i).get(0).toString().trim();
+                if (sheetDate.equalsIgnoreCase(date.trim())) {
+                    rowIndex = i + 1; // Google Sheets індексація з 1
+                    break;
+                }
             }
         }
         if (rowIndex == -1) throw new Exception("Дата " + date + " не знайдена в групі " + groupName);
 
-        // знайти колонку учня
+        // 4. Отримуємо заголовок (рядок студентів)
         String headerRange = safeSheetName + "!2:2";
         ValueRange headerResp = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, headerRange)
                 .execute();
 
+        if (headerResp.getValues() == null || headerResp.getValues().isEmpty())
+            throw new Exception("Рядок студентів не знайдено на аркуші " + groupName);
+
         List<Object> headerRow = headerResp.getValues().get(0);
         int colIndex = -1;
         for (int i = 0; i < headerRow.size(); i++) {
-            if (studentName.equalsIgnoreCase(headerRow.get(i).toString())) {
+            if (studentName.equalsIgnoreCase(headerRow.get(i).toString().trim())) {
                 colIndex = i;
                 break;
             }
         }
         if (colIndex == -1) throw new Exception("Учень " + studentName + " не знайдений у групі " + groupName);
 
-        // якщо ДЗ — зсув на 1 вправо
+        // 5. Для ДЗ зсув вправо
         if (isHomework) {
             colIndex++;
         }
