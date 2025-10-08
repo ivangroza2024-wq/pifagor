@@ -125,8 +125,11 @@ public class GoogleSheetsService {
 
     /** Пошук комірки учня+дата */
     private String findCell(String groupName, String studentName, String date, boolean isHomework) throws Exception {
+        // Обгортаємо назву аркуша в одинарні лапки
+        String safeSheetName = "'" + groupName + "'";
+
         // знайти рядок з датою
-        String range = groupName + "!A:A";
+        String range = safeSheetName + "!A:A";
         ValueRange response = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, range)
                 .execute();
@@ -144,7 +147,7 @@ public class GoogleSheetsService {
         if (rowIndex == -1) throw new Exception("Дата " + date + " не знайдена в групі " + groupName);
 
         // знайти колонку учня
-        String headerRange = groupName + "!2:2";
+        String headerRange = safeSheetName + "!2:2";
         ValueRange headerResp = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, headerRange)
                 .execute();
@@ -164,7 +167,7 @@ public class GoogleSheetsService {
             colIndex++;
         }
 
-        return groupName + "!" + columnLetter(colIndex + 1) + rowIndex;
+        return safeSheetName + "!" + columnLetter(colIndex + 1) + rowIndex;
     }
 
 
