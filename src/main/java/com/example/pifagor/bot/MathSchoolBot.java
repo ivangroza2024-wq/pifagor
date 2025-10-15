@@ -638,7 +638,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
             sb.append("\nВаш факультет: ")
                     .append(user.getFaculty().getName())
                     .append(" ").append(user.getFaculty().getSymbol() == null ? "" : user.getFaculty().getSymbol())
-                    .append(" (особисто: ").append(user.getFaculty() == null ? 0 : user.getFaculty().getPoints()) // note: faculty points
+                    .append(" (особисто: ").append(user.getFaculty() == null ? 0 : user.getFacultyPoints()) // note: faculty points
                     .append(")\n\n");
 
             // top-3 users in user's faculty
