@@ -12,7 +12,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.sheets.v4.Sheets;
 import com.google.api.services.sheets.v4.SheetsScopes;
-import com.google.api.services.sheets.v4.model.ValueRange;
+import com.google.api.services.sheets.v4.model.*;
 import org.springframework.stereotype.Service;
 
 import java.io.FileInputStream;
@@ -176,7 +176,79 @@ public class GoogleSheetsService {
 
         return safeSheetName + "!" + columnLetter(colIndex + 1) + rowIndex;
     }
+    public void updateHomeworkDropdowns(List<String> sheetNames) throws Exception {
+        for (String sheetName : sheetNames) {
+            updateHomeworkDropdownForSheet(sheetName);
+        }
+    }
 
+    private void updateHomeworkDropdownForSheet(String sheetName) throws Exception {
+        Spreadsheet spreadsheet = sheetsService.spreadsheets()
+                .get(SPREADSHEET_ID)
+                .setIncludeGridData(true)
+                .execute();
+
+        Sheet sheet = spreadsheet.getSheets().stream()
+                .filter(s -> s.getProperties().getTitle().equalsIgnoreCase(sheetName))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Не знайдено аркуш: " + sheetName));
+
+        int headerRow = 2;
+        List<GridData> data = sheet.getData();
+        if (data.isEmpty() || data.get(0).getRowData() == null) return;
+
+        List<RowData> rows = data.get(0).getRowData();
+        if (rows.size() < headerRow) return;
+
+        RowData header = rows.get(headerRow - 1);
+        List<CellData> cells = header.getValues();
+
+        // Знайдемо колонки "ДЗ"
+        List<Integer> homeworkColumns = new ArrayList<>();
+        for (int i = 0; i < cells.size(); i++) {
+            CellData cell = cells.get(i);
+            if (cell.getFormattedValue() != null && cell.getFormattedValue().equalsIgnoreCase("ДЗ")) {
+                homeworkColumns.add(i);
+            }
+        }
+
+        if (homeworkColumns.isEmpty()) {
+            System.out.println("❗ На аркуші " + sheetName + " не знайдено колонок ДЗ");
+            return;
+        }
+
+        // Нові значення для списку
+        List<String> values = List.of("чудово", "частково", "немає", "на перевірці", "виконано неправильно");
+
+        List<Request> requests = new ArrayList<>();
+        for (Integer col : homeworkColumns) {
+            GridRange range = new GridRange()
+                    .setSheetId(sheet.getProperties().getSheetId())
+                    .setStartRowIndex(headerRow) // з 3-го рядка вниз
+                    .setStartColumnIndex(col)
+                    .setEndColumnIndex(col + 1);
+
+            DataValidationRule rule = new DataValidationRule()
+                    .setCondition(new BooleanCondition()
+                            .setType("ONE_OF_LIST")
+                            .setValues(values.stream()
+                                    .map(v -> new ConditionValue().setUserEnteredValue(v))
+                                    .toList()))
+                    .setStrict(true)
+                    .setShowCustomUi(true);
+
+            requests.add(new Request().setSetDataValidation(
+                    new SetDataValidationRequest()
+                            .setRange(range)
+                            .setRule(rule)
+            ));
+        }
+
+        BatchUpdateSpreadsheetRequest body = new BatchUpdateSpreadsheetRequest().setRequests(requests);
+        sheetsService.spreadsheets().batchUpdate(SPREADSHEET_ID, body).execute();
+
+        System.out.println("✅ Оновлено випадаючі списки ДЗ для аркуша " + sheetName);
+    }
 
     // 🔹 конвертація номера стовпця → букву (A,B,C,...)
     private String columnLetter(int col) {
