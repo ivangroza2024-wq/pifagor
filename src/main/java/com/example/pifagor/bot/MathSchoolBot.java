@@ -123,21 +123,34 @@ public class MathSchoolBot extends TelegramWebhookBot {
                             sheetsService.updateHomeworkDropdowns(List.of("6кл.Пн.Чт.16:00",
                                     "9кл.Пн.Чт.17:00",
                                     "6кл.Пн.Чт.18:00"));
-
+                            sheetsService.addHomeworkColorRulesForSheet("6кл.Пн.Чт.16:00");
+                            sheetsService.addHomeworkColorRulesForSheet("9кл.Пн.Чт.17:00");
+                            sheetsService.addHomeworkColorRulesForSheet("6кл.Пн.Чт.18:00");
                             sheetsService.updateHomeworkDropdowns(List.of( "6кл.Пн.Чт.19:00",
                                             "8кл.Пн.Чт.20:00",
                                             "6кл.Вт.Пт.16:00"));
+                            sheetsService.addHomeworkColorRulesForSheet("6кл.Пн.Чт.19:00");
+                            sheetsService.addHomeworkColorRulesForSheet("8кл.Пн.Чт.20:00");
+                            sheetsService.addHomeworkColorRulesForSheet("6кл.Вт.Пт.16:00");
                             sheetsService.updateHomeworkDropdowns(List.of("5кл.Вт.Пт.17:00",
                                     "6кл.Вт.Пт.18:00",
                                     "5кл.Вт.Пт.19:00"));
-
+                            sheetsService.addHomeworkColorRulesForSheet("5кл.Вт.Пт.17:00");
+                            sheetsService.addHomeworkColorRulesForSheet("6кл.Вт.Пт.18:00");
+                            sheetsService.addHomeworkColorRulesForSheet("5кл.Вт.Пт.19:00");
                             sheetsService.updateHomeworkDropdowns(List.of("8кл.Вт20:00.Сб.12:00",
                                     "8кл.Ср.17:00.Сб.15:00",
                                     "6кл.Ср.Сб.16:00"));
+                            sheetsService.addHomeworkColorRulesForSheet("8кл.Вт20:00.Сб.12:00");
+                            sheetsService.addHomeworkColorRulesForSheet("8кл.Ср.17:00.Сб.15:00");
+                            sheetsService.addHomeworkColorRulesForSheet("6кл.Ср.Сб.16:00");
                             sheetsService.updateHomeworkDropdowns(List.of(
                                     "8кл.Ср.18:00.Сб.13:00",
                                     "6кл.Ср.19:00.Сб.14:00"
                             ));
+                            sheetsService.addHomeworkColorRulesForSheet("8кл.Ср.18:00.Сб.13:00");
+                            sheetsService.addHomeworkColorRulesForSheet("6кл.Ср.19:00.Сб.14:00");
+
                             sendTeacherGroups(message.getChatId(), null);
                             return null;
                         }

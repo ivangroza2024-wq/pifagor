@@ -20,9 +20,7 @@ import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class GoogleSheetsService {
@@ -276,7 +274,122 @@ public class GoogleSheetsService {
 
         System.out.println("✅ Оновлено випадаючі списки для аркуша " + sheetName);
     }
+    /**
+     * Додає conditional formatting для всіх колонок "ДЗ" на аркуші.
+     */
+    public void addHomeworkColorRulesForSheet(String sheetName) throws Exception {
+        String safeSheetName = sheetName.replace("'", "");
+        // 1) Отримати metadata для пошуку sheetId
+        Spreadsheet spreadsheet = sheetsService.spreadsheets().get(SPREADSHEET_ID).setIncludeGridData(false).execute();
+        Integer sheetId = null;
+        for (Sheet s : spreadsheet.getSheets()) {
+            if (safeSheetName.equals(s.getProperties().getTitle())) {
+                sheetId = s.getProperties().getSheetId();
+                break;
+            }
+        }
+        if (sheetId == null) {
+            throw new IllegalArgumentException("Sheet not found: " + sheetName);
+        }
 
+        // 2) Знайти заголовковий рядок (перші 10 рядків)
+        String headerRangeToCheck = "'" + sheetName + "'!1:10";
+        ValueRange headerRows = sheetsService.spreadsheets().values()
+                .get(SPREADSHEET_ID, headerRangeToCheck)
+                .execute();
+        List<List<Object>> headerValues = headerRows.getValues();
+        if (headerValues == null) {
+            throw new IllegalStateException("No header rows in sheet " + sheetName);
+        }
+
+        int headerRowIndex = -1;
+        List<Object> headerRow = null;
+        for (int i = 0; i < headerValues.size(); i++) {
+            List<Object> row = headerValues.get(i);
+            for (Object cell : row) {
+                if (cell != null && cell.toString().toLowerCase().contains("дз")) {
+                    headerRow = row;
+                    headerRowIndex = i + 1; // 1-based
+                    break;
+                }
+            }
+            if (headerRowIndex != -1) break;
+        }
+        if (headerRowIndex == -1) {
+            System.out.println("❗ На аркуші " + sheetName + " не знайдено колонок ДЗ");
+            return;
+        }
+
+        // 3) Знайти індекси колонок, де є "ДЗ"
+        List<Integer> dzColumnIndexes = new ArrayList<>(); // 0-based
+        for (int c = 0; c < headerRow.size(); c++) {
+            Object h = headerRow.get(c);
+            if (h != null && h.toString().toLowerCase().contains("дз")) {
+                dzColumnIndexes.add(c);
+            }
+        }
+        if (dzColumnIndexes.isEmpty()) {
+            System.out.println("❗ Не знайдено колонок ДЗ у заголовку на " + sheetName);
+            return;
+        }
+
+        // 4) Параметри — від якого рядка нижче заголовка застосовувати формат (наприклад headerRowIndex+0 -> сам заголовок включно)
+        int startRow = headerRowIndex + 0;            // 1-based
+        int endRow = 1000; // наприклад поки до 1000. Можеш динамічно визначати останній рядок.
+
+        // 5) Кольори (RGB в діапазоні 0..1)
+        Color green = new Color().setRed(0f).setGreen(0.8f).setBlue(0.2f); // чудово
+        Color yellow = new Color().setRed(1f).setGreen(0.85f).setBlue(0.2f); // частково
+        Color red = new Color().setRed(0.94f).setGreen(0.2f).setBlue(0.2f); // виконано не правильно
+        Color gray = new Color().setRed(0.15f).setGreen(0.15f).setBlue(0.15f); // немає (темний)
+        Color neutral = new Color().setRed(0.9f).setGreen(0.9f).setBlue(0.9f); // на перевірці (світло-нейтральний)
+
+        // Map value -> color
+        Map<String, Color> map = new LinkedHashMap<>();
+        map.put("чудово", green);
+        map.put("частково", yellow);
+        map.put("немає", gray);
+        map.put("на перевірці", neutral);
+        map.put("виконано неправильно", red);
+
+        // 6) Для кожної found column - створити ConditionalFormatRule з TEXT_EQ для кожного значення
+        List<Request> requests = new ArrayList<>();
+        for (Integer colIndex0 : dzColumnIndexes) {
+            GridRange gridRange = new GridRange()
+                    .setSheetId(sheetId)
+                    // API використовує 0-based indices and endIndex exclusive
+                    .setStartRowIndex(startRow - 1)        // робимо з headerRowIndex (якщо хочеш без заголовку -> +1)
+                    .setEndRowIndex(endRow)               // exclusive
+                    .setStartColumnIndex(colIndex0)
+                    .setEndColumnIndex(colIndex0 + 1);
+
+            for (Map.Entry<String, Color> e : map.entrySet()) {
+                String targetValue = e.getKey();
+                Color color = e.getValue();
+
+                // BooleanRule з TEXT_EQ
+                BooleanCondition cond = new BooleanCondition()
+                        .setType("TEXT_EQ")
+                        .setValues(List.of(new ConditionValue().setUserEnteredValue(targetValue)));
+
+                CellFormat fmt = new CellFormat().setBackgroundColor(color);
+
+                BooleanRule rule = new BooleanRule().setCondition(cond).setFormat(fmt);
+
+                ConditionalFormatRule cfr = new ConditionalFormatRule()
+                        .setRanges(List.of(gridRange))
+                        .setBooleanRule(rule);
+
+                requests.add(new Request().setAddConditionalFormatRule(new AddConditionalFormatRuleRequest().setRule(cfr).setIndex(0)));
+            }
+        }
+
+        // 7) Виклик batchUpdate
+        BatchUpdateSpreadsheetRequest body = new BatchUpdateSpreadsheetRequest().setRequests(requests);
+        sheetsService.spreadsheets().batchUpdate(SPREADSHEET_ID, body).execute();
+
+        System.out.println("✅ Conditional formatting added for sheet " + sheetName);
+    }
     // 🔹 конвертація номера стовпця → букву (A,B,C,...)
     private String columnLetter(int col) {
         StringBuilder sb = new StringBuilder();
