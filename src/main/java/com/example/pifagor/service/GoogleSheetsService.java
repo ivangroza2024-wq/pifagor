@@ -122,76 +122,54 @@ public class GoogleSheetsService {
     }
 
     public List<String> getHomeworkStatusesForLessons(User user, List<String> lessonDates) throws Exception {
-        String sheetName = user.getGroup().getName(); // Напр. "6кл.Пн.Чт.16:00"
-        String safeSheetName = sheetName.replace("'", "");
-        String range = "'" + safeSheetName + "'!A:Z";
-
-        ValueRange response = sheetsService.spreadsheets().values()
-                .get(SPREADSHEET_ID, range)
-                .execute();
-        List<List<Object>> rows = response.getValues();
-        if (rows == null || rows.isEmpty()) return Collections.emptyList();
-
-
-        // 🔹 Знаходимо колонку "ДЗ" для цього учня (нова логіка)
-        int userHomeworkCol = -1;
-        System.out.println("rows.size(): "+rows.size());
-        if (rows.size() >= 2) {
-            List<Object> headerRow = rows.get(0); // "Оцінка", "ДЗ", "Активність"
-            List<Object> namesRow = rows.get(1);  // Імена (зазвичай об’єднані, але API повертає їх повторно або через порожні клітинки)
-System.out.println("headerRow.size(): "+headerRow.size());
-System.out.println("namesRow.size(): "+namesRow.size());
-            for (int j = 0; j < headerRow.size(); j++) {
-                String header = headerRow.get(j).toString().trim().toLowerCase();
-                if (header.equals("дз")) {
-                    // Перевіряємо, чи під цим стовпцем стоїть ім'я користувача
-                    if (j < namesRow.size()) {
-                        String name = namesRow.get(j).toString().trim();
-                        if (name.equalsIgnoreCase(user.getName())) {
-                            userHomeworkCol = j;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (userHomeworkCol == -1) {
-            System.out.println("❗ Не знайдено колонку ДЗ для " + user.getName() + " на аркуші " + sheetName);
-            return Collections.emptyList();
-        }
-
-
-        // 🔹 Формати дат, які можуть бути в таблиці
-        DateTimeFormatter dfSheet = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        DateTimeFormatter dfLesson = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
-
-        // 🔹 Проставляємо "немає" у всі порожні клітинки до поточної дати
-        List<ValueRange> updates = new ArrayList<>();
+        String groupName = user.getGroup().getName();
+        String safeSheetName = "'" + groupName.replace("'", "") + "'";
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd.MM.yyyy");
         LocalDate today = LocalDate.now();
 
-        for (int i = 1; i < rows.size(); i++) {
-            List<Object> row = rows.get(i);
-            if (row.isEmpty()) continue;
+        List<String> results = new ArrayList<>();
+        List<ValueRange> updates = new ArrayList<>();
 
+        for (String lessonDate : lessonDates) {
             try {
-                String dateStr = row.get(0).toString().trim();
-                if (dateStr.isEmpty()) continue;
+                // 1️⃣ Знаходимо адресу комірки ДЗ
+                String cellRef = findCell(groupName, user.getName(), lessonDate, true);
+                if (cellRef == null) {
+                    results.add("—");
+                    continue;
+                }
 
-                LocalDate lessonDate = LocalDate.parse(dateStr, dfSheet);
-                if (lessonDate.isBefore(today)) {
-                    if (row.size() <= userHomeworkCol || row.get(userHomeworkCol).toString().trim().isEmpty()) {
-                        String cellRef = safeSheetName + "!" + getColumnLetter(userHomeworkCol) + (i + 1);
-                        updates.add(new ValueRange()
-                                .setRange(cellRef)
-                                .setValues(List.of(List.of("немає"))));
+                // 2️⃣ Зчитуємо поточне значення
+                ValueRange response = sheetsService.spreadsheets().values()
+                        .get(SPREADSHEET_ID, cellRef)
+                        .execute();
+
+                String status = "—";
+                if (response.getValues() != null && !response.getValues().isEmpty()) {
+                    Object val = response.getValues().get(0).get(0);
+                    if (val != null && !val.toString().trim().isEmpty()) {
+                        status = val.toString().trim();
                     }
                 }
+
+                // 3️⃣ Якщо дата менша за сьогодні і клітинка пуста — ставимо "немає"
+                LocalDate lessonDay = LocalDate.parse(lessonDate, DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"));
+                if (status.equals("—") && lessonDay.isBefore(today)) {
+                    updates.add(new ValueRange()
+                            .setRange(cellRef)
+                            .setValues(List.of(List.of("немає"))));
+                    status = "немає";
+                }
+
+                results.add(status);
+
             } catch (Exception e) {
-                System.out.println("⚠️ Не вдалося розпізнати дату в таблиці: " + row.get(0));
+                e.printStackTrace();
+                results.add("—");
             }
         }
 
+        // 4️⃣ Якщо були оновлення — виконуємо пакетний запис
         if (!updates.isEmpty()) {
             BatchUpdateValuesRequest batchRequest = new BatchUpdateValuesRequest()
                     .setValueInputOption("RAW")
@@ -200,35 +178,9 @@ System.out.println("namesRow.size(): "+namesRow.size());
             System.out.println("✅ Проставлено 'немає' у " + updates.size() + " клітинках для " + user.getName());
         }
 
-        // 🔹 Формуємо статуси останніх 5 уроків
-        List<String> results = new ArrayList<>();
-
-        for (String lessonDateStr : lessonDates) {
-            String status = "—";
-            try {
-                LocalDate lessonDate = LocalDate.parse(lessonDateStr, dfLesson);
-
-                for (List<Object> row : rows) {
-                    if (row.isEmpty()) continue;
-
-                    try {
-                        LocalDate sheetDate = LocalDate.parse(row.get(0).toString().trim(), dfSheet);
-                        if (sheetDate.equals(lessonDate)) {
-                            if (row.size() > userHomeworkCol) {
-                                status = row.get(userHomeworkCol).toString();
-                            }
-                            break;
-                        }
-                    } catch (Exception ignored) {}
-                }
-            } catch (Exception e) {
-                System.out.println("⚠️ Не вдалося розпізнати дату уроку: " + lessonDateStr);
-            }
-            results.add(status);
-        }
-
         return results;
     }
+
 
     private String getColumnLetter(int columnIndex) {
         StringBuilder column = new StringBuilder();
