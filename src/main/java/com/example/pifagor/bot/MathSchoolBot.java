@@ -120,6 +120,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
                             return null;
                         }
                         case "✏️ Поставити оцінку" -> {
+                            /*
                             sheetsService.updateHomeworkDropdowns(List.of("6кл.Пн.Чт.16:00",
                                     "9кл.Пн.Чт.17:00",
                                     "6кл.Пн.Чт.18:00"));
@@ -150,7 +151,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
                             ));
                             sheetsService.addHomeworkColorRulesForSheet("8кл.Ср.18:00.Сб.13:00");
                             sheetsService.addHomeworkColorRulesForSheet("6кл.Ср.19:00.Сб.14:00");
-
+                        */
                             sendTeacherGroups(message.getChatId(), null);
                             return null;
                         }
@@ -265,11 +266,11 @@ public class MathSchoolBot extends TelegramWebhookBot {
                 return;
             }
             if ("menu_battle".equals(data)) {
-                sendHomeworkStatus(chatId, user);
+                handleFacultyBattle(chatId, user, messageId);
                 return;
             }
             if ("check_homework_status".equals(data)) {
-                handleFacultyBattle(chatId, user, messageId);
+                sendHomeworkStatus(chatId, user);
                 return;
             }
             if ("menu_teacher".equals(data)) {
