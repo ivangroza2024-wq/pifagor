@@ -155,7 +155,7 @@ public class GoogleSheetsService {
 
         // 🔹 Проставляємо "немає" у всі порожні клітинки до поточної дати
         List<ValueRange> updates = new ArrayList<>();
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd.MM.yy");
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
         LocalDate today = LocalDate.now();
         for (int i = 1; i < rows.size(); i++) {
