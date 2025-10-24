@@ -153,11 +153,14 @@ public class GoogleSheetsService {
             return Collections.emptyList();
         }
 
+        // 🔹 Формати дат, які можуть бути в таблиці
+        DateTimeFormatter dfSheet = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+        DateTimeFormatter dfLesson = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+
         // 🔹 Проставляємо "немає" у всі порожні клітинки до поточної дати
         List<ValueRange> updates = new ArrayList<>();
-        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-
         LocalDate today = LocalDate.now();
+
         for (int i = 1; i < rows.size(); i++) {
             List<Object> row = rows.get(i);
             if (row.isEmpty()) continue;
@@ -166,9 +169,8 @@ public class GoogleSheetsService {
                 String dateStr = row.get(0).toString().trim();
                 if (dateStr.isEmpty()) continue;
 
-                LocalDate lessonDate = LocalDate.parse(dateStr, df);
-                if (lessonDate.isBefore(today)) { // тільки попередні дати
-                    // якщо клітинка порожня — оновлюємо
+                LocalDate lessonDate = LocalDate.parse(dateStr, dfSheet);
+                if (lessonDate.isBefore(today)) {
                     if (row.size() <= userHomeworkCol || row.get(userHomeworkCol).toString().trim().isEmpty()) {
                         String cellRef = safeSheetName + "!" + getColumnLetter(userHomeworkCol) + (i + 1);
                         updates.add(new ValueRange()
@@ -176,7 +178,9 @@ public class GoogleSheetsService {
                                 .setValues(List.of(List.of("немає"))));
                     }
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                System.out.println("⚠️ Не вдалося розпізнати дату в таблиці: " + row.get(0));
+            }
         }
 
         if (!updates.isEmpty()) {
@@ -189,21 +193,34 @@ public class GoogleSheetsService {
 
         // 🔹 Формуємо статуси останніх 5 уроків
         List<String> results = new ArrayList<>();
-        for (String lessonDate : lessonDates) {
+
+        for (String lessonDateStr : lessonDates) {
             String status = "—";
-            for (List<Object> row : rows) {
-                if (!row.isEmpty() && row.get(0).toString().contains(lessonDate)) {
-                    if (row.size() > userHomeworkCol) {
-                        status = row.get(userHomeworkCol).toString();
-                    }
-                    break;
+            try {
+                LocalDate lessonDate = LocalDate.parse(lessonDateStr, dfLesson);
+
+                for (List<Object> row : rows) {
+                    if (row.isEmpty()) continue;
+
+                    try {
+                        LocalDate sheetDate = LocalDate.parse(row.get(0).toString().trim(), dfSheet);
+                        if (sheetDate.equals(lessonDate)) {
+                            if (row.size() > userHomeworkCol) {
+                                status = row.get(userHomeworkCol).toString();
+                            }
+                            break;
+                        }
+                    } catch (Exception ignored) {}
                 }
+            } catch (Exception e) {
+                System.out.println("⚠️ Не вдалося розпізнати дату уроку: " + lessonDateStr);
             }
             results.add(status);
         }
 
         return results;
     }
+
     private String getColumnLetter(int columnIndex) {
         StringBuilder column = new StringBuilder();
         int index = columnIndex;
