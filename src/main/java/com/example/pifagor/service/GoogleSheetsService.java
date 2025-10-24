@@ -440,9 +440,8 @@ public class GoogleSheetsService {
         Map<String, Color> map = new LinkedHashMap<>();
         map.put("чудово", green);
         map.put("частково", yellow);
-        map.put("немає", gray);
+        map.put("немає", red);
         map.put("на перевірці", neutral);
-        map.put("виконано неправильно", red);
 
         // 6) Для кожної found column - створити ConditionalFormatRule з TEXT_EQ для кожного значення
         List<Request> requests = new ArrayList<>();
