@@ -151,7 +151,7 @@ public class GoogleSheetsService {
         if (rowIndex == -1) throw new Exception("Дата " + date + " не знайдена в групі " + groupName);
 
         // 4. Отримуємо заголовок (рядок студентів)
-        String headerRange = safeSheetName + "!2:2";
+        String headerRange = safeSheetName + "!1:1";
         ValueRange headerResp = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, headerRange)
                 .execute();
