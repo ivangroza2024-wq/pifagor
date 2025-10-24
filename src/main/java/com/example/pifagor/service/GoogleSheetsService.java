@@ -193,11 +193,9 @@ public class GoogleSheetsService {
     }
     /** Пошук комірки учня+дата */
     private String findCell(String groupName, String studentName, String date, boolean isHomework) throws Exception {
-        // 1. Безпечна назва аркуша (апострофи + пробіли)
         String safeSheetName = "'" + groupName.replace("'", "") + "'";
-
-        // 2. Отримуємо всі дати (стовпець А)
         String range = safeSheetName + "!A:A";
+
         ValueRange response = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, range)
                 .execute();
@@ -205,20 +203,49 @@ public class GoogleSheetsService {
         List<List<Object>> rows = response.getValues();
         if (rows == null) throw new Exception("Не знайдено жодної дати у групі " + groupName);
 
-        // 3. Шукаємо потрібну дату (ігноруємо формат пробілів)
+        // 🔹 Формат дати, який є у таблиці
+        DateTimeFormatter sheetFormat = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+        // 🔹 Очищаємо дату від часу, міняємо роздільники
+        String cleanedDate = date.split(" ")[0].replace("-", ".");
+        LocalDate targetDate;
+        try {
+            targetDate = LocalDate.parse(cleanedDate, sheetFormat);
+        } catch (Exception e) {
+            throw new Exception("Неправильний формат дати: " + date);
+        }
+
+        // 🔹 Шукаємо рядок з датою
         int rowIndex = -1;
         for (int i = 0; i < rows.size(); i++) {
             if (!rows.get(i).isEmpty()) {
-                String sheetDate = rows.get(i).get(0).toString().trim();
-                if (sheetDate.equalsIgnoreCase(date.trim())) {
-                    rowIndex = i + 1; // Google Sheets індексація з 1
-                    break;
+                Object val = rows.get(i).get(0);
+                String sheetDateStr;
+
+                if (val instanceof Double) {
+                    // Якщо дата збережена як число
+                    double serial = (Double) val;
+                    long msSince1899 = (long) ((serial - 25569) * 86400 * 1000);
+                    sheetDateStr = new java.text.SimpleDateFormat("dd.MM.yyyy")
+                            .format(new java.util.Date(msSince1899));
+                } else {
+                    sheetDateStr = val.toString().trim();
                 }
+
+                try {
+                    LocalDate sheetDate = LocalDate.parse(sheetDateStr, sheetFormat);
+                    if (sheetDate.equals(targetDate)) {
+                        rowIndex = i + 1;
+                        break;
+                    }
+                } catch (Exception ignored) {}
             }
         }
-        if (rowIndex == -1) throw new Exception("Дата " + date + " не знайдена в групі " + groupName);
 
-        // 4. Отримуємо заголовок (рядок студентів)
+        if (rowIndex == -1)
+            throw new Exception("Дата " + cleanedDate + " не знайдена в групі " + groupName);
+
+        // 🔹 Отримуємо рядок студентів
         String headerRange = safeSheetName + "!2:2";
         ValueRange headerResp = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, headerRange)
@@ -235,15 +262,14 @@ public class GoogleSheetsService {
                 break;
             }
         }
-        if (colIndex == -1) throw new Exception("Учень " + studentName + " не знайдений у групі " + groupName);
+        if (colIndex == -1)
+            throw new Exception("Учень " + studentName + " не знайдений у групі " + groupName);
 
-        // 5. Для ДЗ зсув вправо
-        if (isHomework) {
-            colIndex++;
-        }
+        if (isHomework) colIndex++;
 
         return safeSheetName + "!" + columnLetter(colIndex + 1) + rowIndex;
     }
+
     public void updateHomeworkDropdowns(List<String> sheetNames) throws Exception {
         for (String sheetName : sheetNames) {
             updateHomeworkDropdownForSheet(sheetName);
