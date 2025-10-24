@@ -132,26 +132,34 @@ public class GoogleSheetsService {
         List<List<Object>> rows = response.getValues();
         if (rows == null || rows.isEmpty()) return Collections.emptyList();
 
-        // 🔹 Знаходимо колонку "ДЗ" для цього учня
+
+        // 🔹 Знаходимо колонку "ДЗ" для цього учня (нова логіка)
         int userHomeworkCol = -1;
-        for (List<Object> row : rows) {
-            for (int j = 0; j < row.size(); j++) {
-                String cell = row.get(j).toString().trim();
-                if (cell.equalsIgnoreCase(user.getName()) && j + 1 < row.size()) {
-                    String next = row.get(j + 1).toString().toLowerCase();
-                    if (next.contains("дз")) {
-                        userHomeworkCol = j + 1;
-                        break;
+
+        if (rows.size() >= 2) {
+            List<Object> headerRow = rows.get(0); // "Оцінка", "ДЗ", "Активність"
+            List<Object> namesRow = rows.get(1);  // Імена (зазвичай об’єднані, але API повертає їх повторно або через порожні клітинки)
+
+            for (int j = 0; j < headerRow.size(); j++) {
+                String header = headerRow.get(j).toString().trim().toLowerCase();
+                if (header.equals("дз")) {
+                    // Перевіряємо, чи під цим стовпцем стоїть ім'я користувача
+                    if (j < namesRow.size()) {
+                        String name = namesRow.get(j).toString().trim();
+                        if (name.equalsIgnoreCase(user.getName())) {
+                            userHomeworkCol = j;
+                            break;
+                        }
                     }
                 }
             }
-            if (userHomeworkCol != -1) break;
         }
 
         if (userHomeworkCol == -1) {
             System.out.println("❗ Не знайдено колонку ДЗ для " + user.getName() + " на аркуші " + sheetName);
             return Collections.emptyList();
         }
+
 
         // 🔹 Формати дат, які можуть бути в таблиці
         DateTimeFormatter dfSheet = DateTimeFormatter.ofPattern("dd.MM.yyyy");
