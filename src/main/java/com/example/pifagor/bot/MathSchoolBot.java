@@ -119,6 +119,10 @@ public class MathSchoolBot extends TelegramWebhookBot {
                             handleFacultyBattle(message.getChatId(), user, null);
                             return null;
                         }
+                        case "📋 Перевірити свої ДЗ" -> {
+                            sendHomeworkStatus(message.getChatId(), user);
+                            return null;
+                        }
                         case "✏️ Поставити оцінку" -> {
                             /*
                             sheetsService.updateHomeworkDropdowns(List.of("6кл.Пн.Чт.16:00",
