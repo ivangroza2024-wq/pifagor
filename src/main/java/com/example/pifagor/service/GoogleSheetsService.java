@@ -135,11 +135,12 @@ public class GoogleSheetsService {
 
         // 🔹 Знаходимо колонку "ДЗ" для цього учня (нова логіка)
         int userHomeworkCol = -1;
-
+        System.out.println("rows.size(): "+rows.size());
         if (rows.size() >= 2) {
             List<Object> headerRow = rows.get(0); // "Оцінка", "ДЗ", "Активність"
             List<Object> namesRow = rows.get(1);  // Імена (зазвичай об’єднані, але API повертає їх повторно або через порожні клітинки)
-
+System.out.println("headerRow.size(): "+headerRow.size());
+System.out.println("namesRow.size(): "+namesRow.size());
             for (int j = 0; j < headerRow.size(); j++) {
                 String header = headerRow.get(j).toString().trim().toLowerCase();
                 if (header.equals("дз")) {
