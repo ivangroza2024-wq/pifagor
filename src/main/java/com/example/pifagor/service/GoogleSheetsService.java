@@ -1,5 +1,6 @@
 package com.example.pifagor.service;
 
+import com.example.pifagor.model.User;
 import com.example.pifagor.util.DateUtil;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -120,7 +121,98 @@ public class GoogleSheetsService {
                 .execute();
     }
 
+    public List<String> getHomeworkStatusesForLessons(User user, List<String> lessonDates) throws Exception {
+        String sheetName = user.getGroup().getName(); // Напр. "6кл.Пн.Чт.16:00"
+        String safeSheetName = sheetName.replace("'", "");
+        String range = "'" + safeSheetName + "'!A:Z";
 
+        ValueRange response = sheetsService.spreadsheets().values()
+                .get(SPREADSHEET_ID, range)
+                .execute();
+        List<List<Object>> rows = response.getValues();
+        if (rows == null || rows.isEmpty()) return Collections.emptyList();
+
+        // 🔹 Знаходимо колонку "ДЗ" для цього учня
+        int userHomeworkCol = -1;
+        for (List<Object> row : rows) {
+            for (int j = 0; j < row.size(); j++) {
+                String cell = row.get(j).toString().trim();
+                if (cell.equalsIgnoreCase(user.getName()) && j + 1 < row.size()) {
+                    String next = row.get(j + 1).toString().toLowerCase();
+                    if (next.contains("дз")) {
+                        userHomeworkCol = j + 1;
+                        break;
+                    }
+                }
+            }
+            if (userHomeworkCol != -1) break;
+        }
+
+        if (userHomeworkCol == -1) {
+            System.out.println("❗ Не знайдено колонку ДЗ для " + user.getName() + " на аркуші " + sheetName);
+            return Collections.emptyList();
+        }
+
+        // 🔹 Проставляємо "немає" у всі порожні клітинки до поточної дати
+        List<ValueRange> updates = new ArrayList<>();
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd.MM.yy");
+
+        LocalDate today = LocalDate.now();
+        for (int i = 1; i < rows.size(); i++) {
+            List<Object> row = rows.get(i);
+            if (row.isEmpty()) continue;
+
+            try {
+                String dateStr = row.get(0).toString().trim();
+                if (dateStr.isEmpty()) continue;
+
+                LocalDate lessonDate = LocalDate.parse(dateStr, df);
+                if (lessonDate.isBefore(today)) { // тільки попередні дати
+                    // якщо клітинка порожня — оновлюємо
+                    if (row.size() <= userHomeworkCol || row.get(userHomeworkCol).toString().trim().isEmpty()) {
+                        String cellRef = safeSheetName + "!" + getColumnLetter(userHomeworkCol) + (i + 1);
+                        updates.add(new ValueRange()
+                                .setRange(cellRef)
+                                .setValues(List.of(List.of("немає"))));
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (!updates.isEmpty()) {
+            BatchUpdateValuesRequest batchRequest = new BatchUpdateValuesRequest()
+                    .setValueInputOption("RAW")
+                    .setData(updates);
+            sheetsService.spreadsheets().values().batchUpdate(SPREADSHEET_ID, batchRequest).execute();
+            System.out.println("✅ Проставлено 'немає' у " + updates.size() + " клітинках для " + user.getName());
+        }
+
+        // 🔹 Формуємо статуси останніх 5 уроків
+        List<String> results = new ArrayList<>();
+        for (String lessonDate : lessonDates) {
+            String status = "—";
+            for (List<Object> row : rows) {
+                if (!row.isEmpty() && row.get(0).toString().contains(lessonDate)) {
+                    if (row.size() > userHomeworkCol) {
+                        status = row.get(userHomeworkCol).toString();
+                    }
+                    break;
+                }
+            }
+            results.add(status);
+        }
+
+        return results;
+    }
+    private String getColumnLetter(int columnIndex) {
+        StringBuilder column = new StringBuilder();
+        int index = columnIndex;
+        while (index >= 0) {
+            column.insert(0, (char) ('A' + (index % 26)));
+            index = (index / 26) - 1;
+        }
+        return column.toString();
+    }
     /** Пошук комірки учня+дата */
     private String findCell(String groupName, String studentName, String date, boolean isHomework) throws Exception {
         // 1. Безпечна назва аркуша (апострофи + пробіли)

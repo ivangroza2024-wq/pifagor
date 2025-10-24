@@ -221,6 +221,9 @@ public class MathSchoolBot extends TelegramWebhookBot {
                     KeyboardRow r2 = new KeyboardRow();
                     r2.add("🏆 Битва факультетів");
                     rows.add(r2);
+                    KeyboardRow r3 = new KeyboardRow();
+                    r3.add("📋 Перевірити свої ДЗ");
+                    rows.add(r3);
                 }
                 case TEACHER -> {
                     KeyboardRow r1 = new KeyboardRow();
@@ -262,6 +265,10 @@ public class MathSchoolBot extends TelegramWebhookBot {
                 return;
             }
             if ("menu_battle".equals(data)) {
+                sendHomeworkStatus(chatId, user);
+                return;
+            }
+            if ("check_homework_status".equals(data)) {
                 handleFacultyBattle(chatId, user, messageId);
                 return;
             }
@@ -432,6 +439,9 @@ public class MathSchoolBot extends TelegramWebhookBot {
                     ));
                     rows.add(List.of(
                             InlineKeyboardButton.builder().text("⚔️ Битва факультетів").callbackData("menu_battle").build()
+                    ));
+                    rows.add(List.of(
+                            InlineKeyboardButton.builder().text("📋 Перевірити свої ДЗ").callbackData("check_homework_status").build()
                     ));
                 }
                 case TEACHER -> {
@@ -1024,6 +1034,38 @@ public class MathSchoolBot extends TelegramWebhookBot {
         } catch (Exception e) {
             e.printStackTrace();
             sendMessage(chatId, "Помилка при отриманні дат уроків.");
+        }
+    }
+    private void sendHomeworkStatus(Long chatId, User user) {
+        try {
+            // 1. Отримуємо останні 5 уроків (дати)
+            List<String> lastLessons = driveService.getLastFiveLessonDates(
+                    user.getGroup().getDay1(), user.getGroup().getDay2(),
+                    user.getGroup().getTime1(), user.getGroup().getTime2()
+            );
+            if (lastLessons.isEmpty()) {
+                sendMessage(chatId, "Поки що немає доступних уроків для перевірки.");
+                return;
+            }
+
+            // 2. Отримуємо статуси ДЗ з Google Sheets
+            List<String> homeworkStatuses = sheetsService.getHomeworkStatusesForLessons(user, lastLessons);
+
+            // 3. Формуємо текст повідомлення
+            StringBuilder sb = new StringBuilder("📚 *Ваші ДЗ за останні 5 уроків:*\n\n");
+            for (int i = 0; i < lastLessons.size(); i++) {
+                String date = lastLessons.get(i);
+                String status = (i < homeworkStatuses.size() && homeworkStatuses.get(i) != null)
+                        ? homeworkStatuses.get(i)
+                        : "—";
+                sb.append("• ").append(date).append(" — ").append(status).append("\n");
+            }
+
+            // 4. Надсилаємо
+            sendMessage(chatId, sb.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendMessage(chatId, "Помилка при отриманні статусів ДЗ 😔");
         }
     }
 
