@@ -193,8 +193,38 @@ public class GoogleSheetsService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Не знайдено аркуш: " + sheetName));
 
-        // 2️⃣ Отримуємо лише 2-й рядок (заголовок)
-        String headerRange = "'" + sheetName + "'!2:2";
+        /// Спробуємо знайти рядок, у якому є "ДЗ"
+        int headerRowIndex = -1;
+        String headerRangeToCheck = "'" + sheetName + "'!1:10"; // перевіряємо перші 10 рядків
+
+        ValueRange headerRows = sheetsService.spreadsheets().values()
+                .get(SPREADSHEET_ID, headerRangeToCheck)
+                .execute();
+
+        List<List<Object>> headerValues = headerRows.getValues();
+
+        if (headerValues != null) {
+            for (int i = 0; i < headerValues.size(); i++) {
+                List<Object> row = headerValues.get(i);
+                for (Object cell : row) {
+                    if (cell != null && cell.toString().toLowerCase().contains("дз")) {
+                        headerRowIndex = i + 1; // рядки нумеруються з 1, а індекси з 0
+                        break;
+                    }
+                }
+                if (headerRowIndex != -1) break;
+            }
+        }
+
+        if (headerRowIndex == -1) {
+            System.out.println("❗ На аркуші " + sheetName + " не знайдено рядка з колонками ДЗ");
+            return;
+        }
+
+        System.out.println("✅ На аркуші " + sheetName + " знайдено заголовки у рядку " + headerRowIndex);
+
+// Тепер формуємо діапазон саме з цього рядка
+        String headerRange = "'" + sheetName + "'!" + headerRowIndex + ":" + headerRowIndex;
         ValueRange headerResp = sheetsService.spreadsheets().values()
                 .get(SPREADSHEET_ID, headerRange)
                 .execute();
