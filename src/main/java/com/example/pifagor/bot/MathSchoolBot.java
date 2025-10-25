@@ -38,7 +38,7 @@ import java.util.*;
 @Component
 public class MathSchoolBot extends TelegramWebhookBot {
 
-    private PhraseOfDayService phraseOfDayService;
+    private final PhraseOfDayService phraseOfDayService;
     private final UserService userService;
     private final UserRepository userRepository;
     private final FacultyRepository facultyRepository;
@@ -63,7 +63,8 @@ public class MathSchoolBot extends TelegramWebhookBot {
 
     private final String rootFolderId = "16mUO4OUdMjsjjbziYZTqwSWOvKo2qZOM";
 
-    public MathSchoolBot(UserService userService,
+    public MathSchoolBot(PhraseOfDayService phraseOfDayService,
+            UserService userService,
                          UserRepository userRepository,
                          FacultyRepository facultyRepository,
                          TelegramService telegramService,
@@ -71,6 +72,7 @@ public class MathSchoolBot extends TelegramWebhookBot {
                          GroupRepository groupRepository,
                          RegistrationRequestService registrationRequestService,
                          GoogleSheetsService sheetsService) {
+        this.phraseOfDayService = phraseOfDayService;
         this.userService = userService;
         this.userRepository = userRepository;
         this.facultyRepository = facultyRepository;
