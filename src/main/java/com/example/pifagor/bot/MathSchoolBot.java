@@ -8,12 +8,9 @@ import com.example.pifagor.model.User;
 import com.example.pifagor.repository.FacultyRepository;
 import com.example.pifagor.repository.GroupRepository;
 import com.example.pifagor.repository.UserRepository;
-import com.example.pifagor.service.GoogleDriveService;
-import com.example.pifagor.service.GoogleSheetsService;
-import com.example.pifagor.service.RegistrationRequestService;
-import com.example.pifagor.service.TelegramService;
-import com.example.pifagor.service.UserService;
+import com.example.pifagor.service.*;
 import com.example.pifagor.util.DateUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -41,6 +38,7 @@ import java.util.*;
 @Component
 public class MathSchoolBot extends TelegramWebhookBot {
 
+    private PhraseOfDayService phraseOfDayService;
     private final UserService userService;
     private final UserRepository userRepository;
     private final FacultyRepository facultyRepository;
@@ -121,6 +119,16 @@ public class MathSchoolBot extends TelegramWebhookBot {
                         }
                         case "📋 Перевірити свої ДЗ" -> {
                             sendHomeworkStatus(message.getChatId(), user);
+                            return null;
+                        }
+                        case "💬 Фраза дня" -> {
+                            try {
+                                String phrase = phraseOfDayService.getPhraseOfDay();
+                                sendMessage(message.getChatId(), "💬 *Фраза дня:*\n\n" + phrase);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                sendMessage(message.getChatId(), "⚠️ Помилка при отриманні фрази дня.");
+                            }
                             return null;
                         }
                         case "✏️ Поставити оцінку" -> {
@@ -218,11 +226,17 @@ public class MathSchoolBot extends TelegramWebhookBot {
                     KeyboardRow r = new KeyboardRow();
                     r.add("📝 Надіслати ДЗ");
                     rows.add(r);
+                    KeyboardRow phraseRow = new KeyboardRow();
+                    phraseRow.add("💬 Фраза дня");
+                    rows.add(phraseRow);
                 }
                 case STUDENT -> {
                     KeyboardRow r1 = new KeyboardRow();
                     r1.add("📝 Надіслати ДЗ");
                     rows.add(r1);
+                    KeyboardRow phraseRow = new KeyboardRow();
+                    phraseRow.add("💬 Фраза дня");
+                    rows.add(phraseRow);
                     KeyboardRow r2 = new KeyboardRow();
                     r2.add("🏆 Битва факультетів");
                     rows.add(r2);
@@ -234,6 +248,9 @@ public class MathSchoolBot extends TelegramWebhookBot {
                     KeyboardRow r1 = new KeyboardRow();
                     r1.add("✏️ Поставити оцінку");
                     rows.add(r1);
+                    KeyboardRow phraseRow = new KeyboardRow();
+                    phraseRow.add("💬 Фраза дня");
+                    rows.add(phraseRow);
                     KeyboardRow r2 = new KeyboardRow();
                     r2.add("🏆 Битва факультетів");
                     rows.add(r2);
@@ -259,6 +276,16 @@ public class MathSchoolBot extends TelegramWebhookBot {
             // ---- ГОЛОВНЕ МЕНЮ (inline) ----
             if ("menu_main".equals(data)) {
                 sendMainMenu(chatId); // тут завжди показуємо ReplyKeyboard
+                return;
+            }
+            if ("menu_phrase".equals(data)) {
+                try {
+                    String phrase = phraseOfDayService.getPhraseOfDay();
+                    editMessage(chatId, messageId, "💬 *Фраза дня:*\n\n" + phrase, null);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    editMessage(chatId, messageId, "⚠️ Помилка при отриманні фрази дня.", null);
+                }
                 return;
             }
             if ("menu_homework".equals(data)) {
@@ -435,9 +462,20 @@ public class MathSchoolBot extends TelegramWebhookBot {
             ));
         } else {
             switch (user.getRole()) {
-                case PARENT -> rows.add(List.of(
-                        InlineKeyboardButton.builder().text("📚 Домашнє завдання").callbackData("menu_homework").build()
-                ));
+                case PARENT -> {
+                    rows.add(List.of(
+                            InlineKeyboardButton.builder().text("📚 Домашнє завдання").callbackData("menu_homework").build()
+                    ));
+                    rows.add(List.of(
+                            InlineKeyboardButton.builder().text("💬 Фраза дня").callbackData("menu_phrase").build()
+                    ));
+                    rows.add(List.of(
+                            InlineKeyboardButton.builder()
+                                    .text("💬 Фраза дня")
+                                    .callbackData("menu_phrase")
+                                    .build()
+                    ));
+                }
                 case STUDENT -> {
                     rows.add(List.of(
                             InlineKeyboardButton.builder().text("📚 Домашнє завдання").callbackData("menu_homework").build()
@@ -448,6 +486,12 @@ public class MathSchoolBot extends TelegramWebhookBot {
                     rows.add(List.of(
                             InlineKeyboardButton.builder().text("📋 Перевірити свої ДЗ").callbackData("check_homework_status").build()
                     ));
+                    rows.add(List.of(
+                            InlineKeyboardButton.builder()
+                                    .text("💬 Фраза дня")
+                                    .callbackData("menu_phrase")
+                                    .build()
+                    ));
                 }
                 case TEACHER -> {
                     rows.add(List.of(
@@ -455,6 +499,12 @@ public class MathSchoolBot extends TelegramWebhookBot {
                     ));
                     rows.add(List.of(
                             InlineKeyboardButton.builder().text("⚔️ Битва факультетів").callbackData("menu_battle").build()
+                    ));
+                    rows.add(List.of(
+                            InlineKeyboardButton.builder()
+                                    .text("💬 Фраза дня")
+                                    .callbackData("menu_phrase")
+                                    .build()
                     ));
                 }
             }
